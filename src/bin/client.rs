@@ -40,18 +40,17 @@ async fn main() -> anyhow::Result<()> {
 
     let file_path = sync_dir.join(file_name.trim());
 
-    let mut write_path = sync_dir.into_os_string().into_string().unwrap();
     println!("Default path is: {} -- Do you want to modify it?
         Press enter to skip, write the new path to modify.",
         file_path.display());
     
-    let mut modified_path = String::from("/");
+    let mut modified_path = String::new();
     stdin().read_line(&mut modified_path).expect("error reading user input");
 
     if !modified_path.trim().is_empty() {
-        write_path += &modified_path; 
-    } 
+        file_name = modified_path; 
+    }
 
-    send_file(&mut stream, file_path, write_path).await?;
+    send_file(&mut stream, file_path, file_name).await?;
     Ok(())
 }
