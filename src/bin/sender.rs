@@ -1,9 +1,10 @@
-use tokio::{io::AsyncWriteExt, net::TcpStream};
+use tokio::{io::AsyncWriteExt, net::{UdpSocket,TcpStream}};
 use tokio::fs::{File, create_dir_all};
 use tokio::io;
 use std::{io::stdin, path::PathBuf};
 use dirs::home_dir;
-
+use mdns_sd::{ServiceDaemon, ServiceEvent};
+use std::time::Duration;
 
 // stream: Tcp Stream
 // file_path: path of the file to send
@@ -24,16 +25,54 @@ async fn send_file(stream: &mut TcpStream, file_path: PathBuf, write_path: Strin
     Ok(())
 }
 
+fn discover_receiver() -> anyhow::Result<String> {
+    let daemon = ServiceDaemon::new()?;
+    let service_type = "_p2pfile._tcp.local.";
+    
+    let receiver = daemon.browse(service_type)?;
+    
+    println!("Searching for receiver");
+    
+    let timeout = Duration::from_secs(10);
+    let start = std::time::Instant::now();
+    
+    while start.elapsed() < timeout {
+        if let Ok(event) = receiver.recv_timeout(Duration::from_millis(500)) {
+            match event {
+                ServiceEvent::ServiceResolved(info) => {
+                    println!("Found service: {}", info.get_fullname());
+
+                    if let Some(ip) = info.get_addresses().iter().next() {
+                        let addr = format!("{}:{}", ip, info.get_port());
+                        println!("Receiver address: {}", addr);
+                        daemon.shutdown()?;
+                        return Ok(addr);
+                    }
+                }
+
+                other => {
+                    println!("Event: {:?}", other);
+                }
+            }
+        }
+    }
+    
+    daemon.shutdown()?;
+    Err(anyhow::anyhow!("No receiver found"))
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let receiver_addr = discover_receiver()?;
+
+    let mut stream = TcpStream::connect(&receiver_addr).await?;
+
     let sync_dir = home_dir()
         .expect("Couldn't find home directory")
         .join("sync");
 
     create_dir_all(&sync_dir).await?;
-    
-    let mut stream = TcpStream::connect("127.0.0.1:2828").await?;
- 
+  
     println!("Enter the name of the file");
     let mut file_name = String::new();
     stdin().read_line(&mut file_name).expect("error reading user input");
