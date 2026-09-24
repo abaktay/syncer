@@ -47,7 +47,6 @@ pub async fn send_file(stream: &mut TcpStream, path: &PathBuf) -> anyhow::Result
 
     // sends the file
     let bytes = io::copy(&mut file, stream).await?;
-    stream.shutdown().await?;
     println!("Sent {} bytes", bytes);
     Ok(())
 }

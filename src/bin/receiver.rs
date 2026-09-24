@@ -18,8 +18,16 @@ async fn main() -> anyhow::Result<()> {
         println!("Connection from {}", addr);
         let sync_dir = sync_dir.clone();
         tokio::spawn(async move {
-            if let Err(e) = read_file(&mut stream, sync_dir).await {
-                eprintln!("Error receiving file: {}", e);
+            loop {
+                match read_file(&mut stream, sync_dir.clone()).await {
+                    Ok(()) => {
+                        println!("File received successfully.");
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                        break;
+                    }
+                }
             }
         });
     }
