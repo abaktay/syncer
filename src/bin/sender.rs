@@ -1,21 +1,18 @@
 use dirs::home_dir;
 use std::io::stdin;
-use sync::{discovery::listen_for_peers, transfer::send_file};
-use tokio::{
-    fs::create_dir_all,
-    net::{TcpStream, UdpSocket},
-};
-
-const DISCOVERY_PORT: u16 = 2828;
+use sync::transfer::send_file;
+use tokio::{fs::create_dir_all, net::TcpStream};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let socket = UdpSocket::bind(format!("0.0.0.0:{}", DISCOVERY_PORT)).await?;
+    println!("Enter the username (needs MagicDns) or IP address of the recipient:");
+    let mut recipient = String::new();
 
-    let peer_id = listen_for_peers(&socket).await?;
+    stdin()
+        .read_line(&mut recipient)
+        .expect("error reading user input");
 
-    let peer_addr = format!("{}:{}", peer_id.ip, peer_id.port);
-    let mut stream = TcpStream::connect(peer_addr).await?;
+    let mut socket = TcpStream::connect(format!("{}:9000", recipient.trim())).await?;
 
     let sync_dir = home_dir()
         .expect("Couldn't find home directory")
@@ -32,6 +29,6 @@ async fn main() -> anyhow::Result<()> {
 
         let file_path = sync_dir.join(file_name.trim());
 
-        send_file(&mut stream, &file_path).await?;
+        send_file(&mut socket, &file_path).await?;
     }
 }

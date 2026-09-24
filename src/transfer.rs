@@ -1,19 +1,8 @@
-use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 use tokio::io::{self, AsyncReadExt};
 
 use tokio::fs::File;
 use tokio::{io::AsyncWriteExt, net::TcpStream};
-
-pub fn get_local_ip() -> anyhow::Result<Ipv4Addr> {
-    use std::net::UdpSocket;
-    let socket = UdpSocket::bind("0.0.0.0:0")?;
-    socket.connect("8.8.8.8:80")?;
-    match socket.local_addr()?.ip() {
-        IpAddr::V4(ip) => Ok(ip),
-        IpAddr::V6(_) => anyhow::bail!("address must be ipv4"),
-    }
-}
 
 pub async fn read_file(stream: &mut TcpStream, dir: PathBuf) -> anyhow::Result<()> {
     // let mut reader = io::BufReader::new(stream);
